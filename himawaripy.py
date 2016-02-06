@@ -59,12 +59,26 @@ def main():
 
     counter = Value("i", 0)
     p = Pool(cpu_count() * level)
-    print("Downloading tiles: 0/{} completed".format(level*level), end="\r")
-    res = p.map(download_chunk, product(range(level), range(level), (latest,)))
+    try:
+        print("Downloading tiles: 0/{} completed".format(level*level), end="\r")
+        res = p.map(download_chunk, product(range(level), range(level), (latest,)))
 
-    for (x, y, tiledata) in res:
-            tile = Image.open(BytesIO(tiledata))
-            png.paste(tile, (width*x, height*y, width*(x+1), height*(y+1)))
+        for (x, y, tiledata) in res:
+                tile = Image.open(BytesIO(tiledata))
+                png.paste(tile, (width*x, height*y, width*(x+1), height*(y+1)))
+    except:
+        print("\nParallel downloading failed. Attempting serial method.")
+        print("Downloading tiles: 0/{} completed".format(level*level), end="\r")
+        for x in range(level):
+            for y in range(level):
+                with urlopen(url_format.format(level, width, strftime("%Y/%m/%d/%H%M%S", latest), x, y)) as tile_w:
+                    tiledata = tile_w.read()
+
+                tile = Image.open(BytesIO(tiledata))
+                png.paste(tile, (width*x, height*y, width*(x+1), height*(y+1)))
+
+                print("Downloading tiles: {}/{} completed".format(x*level + y + 1, level*level), end="\r")
+        print("\nDownloaded\n")
 
     makedirs(split(output_file)[0], exist_ok=True)
     png.save(output_file, "PNG")
